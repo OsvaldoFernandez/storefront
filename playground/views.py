@@ -9,23 +9,22 @@ from django.db import transaction
 from store.models import Product, Customer, Collection, Order, OrderItem
 from django.contrib.contenttypes.models import ContentType
 from tags.models import  TaggedItem
+from django.conf import settings
 
 
 # Create your views here.
 
 def say_hello(request):
-    with transaction.atomic():
-        new_order = Order()
-        new_order.customer_id = 1
-        new_order.save()
+    # with transaction.atomic():
+    #     new_order = Order()
+    #     new_order.customer_id = 1
+    #     new_order.save()
 
-        item = OrderItem()
-        item.order = new_order
-        item.product_id = -1
-        item.quantity = 1 
-        item.unit_price = 10
-        item.save()
-
-    
+    #     item = OrderItem()
+    #     item.order = new_order
+    #     item.product_id = -1
+    #     item.quantity = 1 
+    #     item.unit_price = 10
+    #     item.save()
 
     return render(request, 'hello.html', {'name': 'uva'})
