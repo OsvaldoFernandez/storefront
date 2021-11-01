@@ -60,3 +60,5 @@ python manage.py sqlsequencereset store
 # python manage.py createsuperuser    
 # actualizar seqs en pgsql
 
+# CONTEXT OBJECT: le da datos adicionales al serializer, Ver el caso de reviews que siempre queremos que tome el product de la URL
+

@@ -9,6 +9,8 @@ django-debug-toolbar = "*"
 psycopg2 = "*"
 djangorestframework = "*"
 python-dotenv = "*"
+drf-nested-routers = "*"
+django-filter = "*"
 
 [dev-packages]
 
