@@ -1,7 +1,9 @@
 from django.core import validators
 from django.db import models
+from django.db.models.deletion import CASCADE
 from django.db.models.fields import CharField, related
 from django.core.validators import MinValueValidator
+from uuid import uuid4
 
 # Create your models here.
 
@@ -38,6 +40,12 @@ class Product(models.Model):
 
     class Meta:
         ordering = ['title']
+
+class Review(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    date = models.DateField(auto_now_add=True)
 
 class Customer(models.Model):
     MEMBERSHIP_BRONCE = 'B'
@@ -86,12 +94,24 @@ class Address(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
 
 class Cart(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def total_price(self):
+        return sum([item.total_price() for item in self.items.all()])
+
 class CartItem(models.Model):
-    quantity = models.PositiveSmallIntegerField()
+    quantity = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1)]
+    )
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
+    
+    def total_price(self):
+        return self.quantity * self.product.unit_price
+
+    class Meta:
+        unique_together = [['cart', 'product']]
 
 
 
