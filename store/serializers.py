@@ -1,9 +1,10 @@
 import collections
 from rest_framework import serializers
 from decimal import Decimal
+from rest_framework.fields import ReadOnlyField
 
 from rest_framework.relations import HyperlinkedRelatedField, PrimaryKeyRelatedField
-from store.models import Product, Collection, Review, Cart, CartItem
+from store.models import Customer, Product, Collection, Review, Cart, CartItem
 
 class CollectionSerializer(serializers.ModelSerializer):
     class Meta: 
@@ -107,3 +108,10 @@ class CartSerializer(serializers.ModelSerializer):
 
     id = serializers.UUIDField(read_only=True)
     items = CartItemSerializer(many=True, read_only=True)
+
+class CustomerSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Customer
+        fields = ['id', 'user_id', 'phone', 'birth_date', 'membership']
