@@ -1,16 +1,21 @@
 from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.decorators import action, permission_classes
 from rest_framework.filters import SearchFilter, OrderingFilter
-from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin
+from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, UpdateModelMixin
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny, DjangoModelPermissions, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework import status
 
+from store.permissions import FullDjangoModelPermissions, IsAdminOrReadOnly, ViewCustomerHistoryPermission
+
 from .filters import ProductFilter
 from .pagination import DefaultPagination
-from .models import Order, Product, Collection, OrderItem, Review, Cart, CartItem
-from .serializers import AddCartItemSerializer, CartItemSerializer, CollectionSerializer, ProductSerializer, ReviewSerializer, CartSerializer, UpdateCartItemSerializer
+from .models import Order, Product, Collection, OrderItem, Review, Cart, CartItem, Customer
+from .serializers import AddCartItemSerializer, CartItemSerializer, CollectionSerializer, CustomerSerializer, ProductSerializer, ReviewSerializer, CartSerializer, UpdateCartItemSerializer
+from store import serializers
 
 class ProductViewSet(ModelViewSet):
     queryset = Product.objects.all()
@@ -19,6 +24,7 @@ class ProductViewSet(ModelViewSet):
     #filterset_fields = ['collection_id', 'unit_price'] SOLO PARA FILTRAR EXACTOS
     filterset_class = ProductFilter
     pagination_class = DefaultPagination
+    permission_classes = [IsAdminOrReadOnly]
     search_fields = ['title', 'description'] # Se puede agregar 'collection__title'
     ordering_fields = ['unit_price', 'last_update']
     
@@ -44,6 +50,7 @@ class ProductViewSet(ModelViewSet):
 class CollectionViewSet(ModelViewSet): # Alternative: ReadOnlyModelViewSet 
     queryset = Collection.objects.annotate(products_count=Count('product'))
     serializer_class = CollectionSerializer
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_serializer_context(self):
         return {'request': self.request}
@@ -87,3 +94,32 @@ class CartItemViewSet(ModelViewSet):
 
     def get_queryset(self):
         return CartItem.objects.select_related('product').filter(cart_id=self.kwargs['cart_pk'])
+
+class CustomerViewSet(ModelViewSet):
+    queryset = Customer.objects.all()
+    serializer_class = CustomerSerializer
+    permission_classes = [IsAdminUser] # it could be FullDjangoModelPermissions
+
+    # def get_permissions(self):
+    #     if self.request.method == 'GET':
+    #         return [AllowAny()]
+    #     return [IsAuthenticated()]
+
+    @action(detail=False, methods=['GET', 'PUT'], permission_classes=[IsAuthenticated]) #if true, I have to provide and ID, similar to collection vs member in RoR
+    def me(self, request):
+        (customer, created) = Customer.objects.get_or_create(user_id=request.user.id)
+        if request.method == 'GET':
+            serializer = CustomerSerializer(customer)
+            return Response(serializer.data)
+        elif request.method == 'PUT':
+            serializer = CustomerSerializer(customer, data = request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+
+    @action(detail=True, methods=['GET'], permission_classes=[ViewCustomerHistoryPermission])
+    def history(self, request, pk):
+        return Response('ok')
+
+
+
