@@ -14,7 +14,7 @@ from store.permissions import FullDjangoModelPermissions, IsAdminOrReadOnly, Vie
 from .filters import ProductFilter
 from .pagination import DefaultPagination
 from .models import Order, Product, Collection, OrderItem, Review, Cart, CartItem, Customer
-from .serializers import AddCartItemSerializer, CartItemSerializer, CollectionSerializer, CustomerSerializer, ProductSerializer, ReviewSerializer, CartSerializer, UpdateCartItemSerializer
+from .serializers import AddCartItemSerializer, CartItemSerializer, CollectionSerializer, CreateOrderSerializer, CustomerSerializer, ProductSerializer, ReviewSerializer, CartSerializer, UpdateCartItemSerializer, OrderSerializer, UpdateOrderSerializer
 from store import serializers
 
 class ProductViewSet(ModelViewSet):
@@ -107,7 +107,7 @@ class CustomerViewSet(ModelViewSet):
 
     @action(detail=False, methods=['GET', 'PUT'], permission_classes=[IsAuthenticated]) #if true, I have to provide and ID, similar to collection vs member in RoR
     def me(self, request):
-        (customer, created) = Customer.objects.get_or_create(user_id=request.user.id)
+        customer = Customer.objects.get(user_id=request.user.id)
         if request.method == 'GET':
             serializer = CustomerSerializer(customer)
             return Response(serializer.data)
@@ -121,5 +121,39 @@ class CustomerViewSet(ModelViewSet):
     def history(self, request, pk):
         return Response('ok')
 
+class OrderViewSet(ModelViewSet):
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+
+    def get_permissions(self):
+        if self.request.method in ['PATCH', 'DELETE']:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        serializer = CreateOrderSerializer(
+            data=request.data,
+            context = { 'user_id': self.request.user.id })
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save() #todo lo que escribimos de crear order items y eliminar el cart tiene la resp el serializer
+        serializer = OrderSerializer(order)
+        return Response(serializer.data)
 
 
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return CreateOrderSerializer
+        elif self.request.method == 'PATCH':
+            return UpdateOrderSerializer
+        return OrderSerializer
+
+    def get_queryset(self):
+        user = self.request.user 
+
+        if user.is_staff:
+            return Order.objects.all()
+        
+        customer_id = Customer.objects.only('id').get(user_id=user.id)
+        return Order.objects.filter(customer_id=customer_id)
+
+    def get_serializer_context(self):
+        return { 'user_id': self.request.user.id }
